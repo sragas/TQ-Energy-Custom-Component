@@ -1,0 +1,8 @@
+{
+  "domain": "tqenergymanagement",
+  "name": "TQ Energy Management",
+  "documentation": "https://github.com/sragas/TQ-Energy-Custom-Component.git",
+  "dependencies": [],
+  "codeowners": ["@sragas"],
+  "requirements": []
+}
