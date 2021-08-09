@@ -1,8 +1,7 @@
+import requests
 import simplejson
 
-import requests
-
-from .const import READ_PATH, LOGIN_PATH, BASE_URL, _LOGGER
+from .const import _LOGGER, BASE_URL, LOGIN_PATH, READ_PATH
 
 
 class TQEnergyManagementApi(object):
@@ -25,52 +24,51 @@ class TQEnergyManagementApi(object):
                     self.authenticated = False
                     self.login()
                 else:
-                    return dataObj        
+                    return dataObj
         except requests.exceptions.HTTPError as errh:
-            _LOGGER.error("Http Error: %s",errh)
+            _LOGGER.error("Http Error: %s", errh)
         except requests.exceptions.ConnectionError as errc:
-            _LOGGER.error("Error Connecting: %s",errc)
+            _LOGGER.error("Error Connecting: %s", errc)
         except requests.exceptions.Timeout as errt:
-            _LOGGER.error("Timeout Error: %s",errt)
+            _LOGGER.error("Timeout Error: %s", errt)
         except requests.exceptions.RequestException as err:
-            _LOGGER.error("Something went wrong: %s",err)
+            _LOGGER.error("Something went wrong: %s", err)
         except simplejson.errors.JSONDecodeError as jerr:
-            _LOGGER.error("Could not decode json: %s",jerr)
+            _LOGGER.error("Could not decode json: %s", jerr)
         except Exception as error:
-            _LOGGER.error("Something else went wrong: %s",error)        
+            _LOGGER.error("Something else went wrong: %s", error)
         return None
 
     def login(self):
-       self.init_session()
-       self.authenticate()
+        self.init_session()
+        self.authenticate()
 
     def init_session(self):
         url = BASE_URL.format(self._host, self._port, LOGIN_PATH)
-        response = requests.get(url,timeout=30)
+        response = requests.get(url, timeout=30)
         if response.status_code == 200 and response.cookies['PHPSESSID']:
             self.session_id = response.cookies['PHPSESSID']
             init_obj = response.json()
             if init_obj['serial']:
                 self.serial_number = init_obj['serial']
             else:
-                raise Exception("Could not init session!")    
+                raise Exception("Could not init session!")
         else:
-            raise Exception("Could not init session!")     
+            raise Exception("Could not init session!")
 
     def authenticate(self):
         url = BASE_URL.format(self._host, self._port, LOGIN_PATH)
-        post_params= {'login': self.serial_number, 'password': self._password}
+        post_params = {'login': self.serial_number, 'password': self._password}
         cookies = {'PHPSESSID': self.session_id}
-        response = requests.post(url,timeout=30, data=post_params, cookies=cookies)
+        response = requests.post(url, timeout=30, data=post_params, cookies=cookies)
         if response.status_code == 200:
             authentication_obj = response.json();
             if authentication_obj['authentication'] == True:
                 self.authenticated = True
         else:
-            raise Exception("Could not login!")   
+            raise Exception("Could not login!")
 
-
-    def changeobiskeys(self,response):
+    def changeobiskeys(self, response):
         jsoninput = response
         jsoninput["active_power_incoming"] = jsoninput.pop("1-0:1.4.0*255")
         jsoninput["active_energy_incoming"] = jsoninput.pop("1-0:1.8.0*255")
@@ -131,8 +129,8 @@ class TQEnergyManagementApi(object):
         jsoninput["power_factor_l3"] = jsoninput.pop("1-0:73.4.0*255")
         jsoninput["apparent_power_incoming"] = jsoninput.pop("1-0:9.4.0*255")
         jsoninput["apparent_energy_incoming"] = jsoninput.pop("1-0:9.8.0*255")
-        #serial
-        #status
+        # serial
+        # status
         return jsoninput
 
     def fetch_data(self):
@@ -141,11 +139,11 @@ class TQEnergyManagementApi(object):
     def update(self):
         sensors = {}
         if not self.authenticated:
-           self.login()
+            self.login()
 
         if self.authenticated:
-           response = self.send_request()
-           if response:
-               sensors = self.changeobiskeys(response)
-            
+            response = self.send_request()
+            if response:
+                sensors = self.changeobiskeys(response)
+
         return sensors

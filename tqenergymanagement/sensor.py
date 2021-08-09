@@ -71,90 +71,19 @@ sensor:
       - power_factor_l3
 """
 
-from datetime import timedelta
-import voluptuous as vol
 import async_timeout
-
-from .tqenergymanagementapi import TQEnergyManagementApi
+import homeassistant.helpers.config_validation as config_validation
+import voluptuous as vol
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
+from homeassistant.const import (CONF_HOST, CONF_NAME, CONF_PASSWORD,
+                                 CONF_PORT, CONF_RESOURCES, CONF_SCAN_INTERVAL)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
-import homeassistant.helpers.config_validation as config_validation
-from homeassistant.const import (
-    CONF_HOST,
-    CONF_PORT,
-    CONF_RESOURCES,
-    CONF_PASSWORD,
-    CONF_NAME,
-    CONF_SCAN_INTERVAL
-)
-
-from homeassistant.helpers.entity import Entity
-
-from .const import DEFAULT_NAME, _LOGGER, MIN_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+from .const import (_LOGGER, DEFAULT_NAME, DEFAULT_UPDATE_INTERVAL,
+                    MIN_UPDATE_INTERVAL)
+from .definitions import SENSORS, TQEnergyManagementSensorEntityDescription
 from .sensor_names_de import SENSOR_NAMES
-
-SENSOR_TYPES = {
-    "active_power_incoming" : ["W", "mdi:flash"],
-    "active_energy_incoming" : ["Wh", "mdi:flash"],
-    "apparent_power_outgoing" : ["W", "mdi:flash"],
-    "apparent_energy_outgoing" : ["VAh", "mdi:flash"],
-    "apparent_power_incoming" : ["W", "mdi:flash"],
-    "apparent_energy_incoming" : ["VAh", "mdi:flash"],
-    "active_power_outgoing" : ["W", "mdi:flash"],
-    "active_energy_outgoing" : ["Wh", "mdi:flash"],
-    "power_factor" : ["", "mdi:flash"],
-    "supply_frequency" : ["Hz", "mdi:flash"],
-    "active_power_incoming_l1" : ["W", "mdi:flash"],
-    "active_energy_incoming_l1" : ["Wh", "mdi:flash"],
-    "active_power_outgoing_l1" : ["W", "mdi:flash"],
-    "active_energy_outgoing_l1" : ["Wh", "mdi:flash"],
-    "reactive_power_incoming_l1" : ["Var", "mdi:flash"],
-    "reactive_energy_incoming_l1" : ["Varh", "mdi:flash"],
-    "reactive_power_outgoing_l1" : ["Var", "mdi:flash"],
-    "reactive_energy_outgoing_l1" : ["Varh", "mdi:flash"],
-    "apparent_power_incoming_l1" : ["W", "mdi:flash"],
-    "apparent_energy_incoming_l1" : ["VAh", "mdi:flash"],
-    "reactive_power_incoming" : ["Var", "mdi:flash"],
-    "reactive_energy_incoming" : ["Varh", "mdi:flash"],
-    "apparent_power_outgoing_l1" : ["W", "mdi:flash"],
-    "apparent_energy_outgoing_l1" : ["VAh", "mdi:flash"],
-    "current_l1" : ["A", "mdi:flash"],
-    "voltage_l1" : ["V", "mdi:flash"],
-    "power_factor_l1" : ["", "mdi:flash"],
-    "reactive_power_outgoing" : ["Var", "mdi:flash"],
-    "reactive_energy_outgoing" : ["Varh", "mdi:flash"],
-    "active_power_incoming_l2" : ["W", "mdi:flash"],
-    "active_energy_incoming_l2" : ["Wh", "mdi:flash"],
-    "active_power_outgoing_l2" : ["W", "mdi:flash"],
-    "active_energy_outgoing_l2" : ["Wh", "mdi:flash"],
-    "reactive_power_incoming_l2" : ["Var", "mdi:flash"],
-    "reactive_energy_incoming_l2" : ["Varh", "mdi:flash"],
-    "reactive_power_outgoing_l2" : ["Var", "mdi:flash"],
-    "reactive_energy_outgoing_l2" : ["Varh", "mdi:flash"],
-    "apparent_power_incoming_l2" : ["W", "mdi:flash"],
-    "apparent_energy_incoming_l2" : ["VAh", "mdi:flash"],
-    "apparent_power_outgoing_l2" : ["W", "mdi:flash"],
-    "apparent_energy_outgoing_l2" : ["VAh", "mdi:flash"],
-    "current_l2" : ["A", "mdi:flash"],
-    "voltage_l2" : ["V", "mdi:flash"],
-    "power_factor_l2" : ["", "mdi:flash"],
-    "active_power_incoming_l3" : ["W", "mdi:flash"],
-    "active_energy_incoming_l3" : ["Wh", "mdi:flash"],
-    "active_power_outgoing_l3" : ["W", "mdi:flash"],
-    "active_energy_outgoing_l3" : ["Wh", "mdi:flash"],
-    "reactive_power_incoming_l3" : ["Var", "mdi:flash"],
-    "reactive_energy_incoming_l3" : ["Varh", "mdi:flash"],
-    "reactive_power_outgoing_l3" : ["Var", "mdi:flash"],
-    "reactive_energy_outgoing_l3" : ["Varh", "mdi:flash"],
-    "apparent_power_incoming_l3" : ["W", "mdi:flash"],
-    "apparent_energy_incoming_l3" : ["VAh", "mdi:flash"],
-    "apparent_power_outgoing_l3" : ["W", "mdi:flash"],
-    "apparent_energy_outgoing_l3" : ["VAh", "mdi:flash"],
-    "current_l3" : ["A", "mdi:flash"],
-    "voltage_l3" : ["V", "mdi:flash"],
-    "power_factor_l3" : ["", "mdi:flash"]
-}
+from .tqenergymanagementapi import TQEnergyManagementApi
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -165,11 +94,10 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_UPDATE_INTERVAL): (
             vol.All(config_validation.time_period, vol.Clamp(min=MIN_UPDATE_INTERVAL))
         ),
-        vol.Required(CONF_RESOURCES, default=[]): vol.All(
-            config_validation.ensure_list, [vol.In(SENSOR_TYPES)]
-        ),
+         vol.Required(CONF_RESOURCES, default=[]): vol.All(),
     }
 )
+
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Setup sensors."""
@@ -180,12 +108,13 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         async with async_timeout.timeout(10):
             data = await hass.async_add_executor_job(api.fetch_data)
             return data
+
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name="tqenergymanagement_sensor",
         update_method=async_update_data,
-        update_interval=config.get(CONF_SCAN_INTERVAL),
+        update_interval=config.get(CONF_SCAN_INTERVAL)
     )
 
     await coordinator.async_refresh()
@@ -193,37 +122,29 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     entities = []
     sensor_prefix = config.get(CONF_NAME)
 
-    for resource in config[CONF_RESOURCES]:
-        sensor_type = resource.lower()
-
-        if sensor_type not in SENSOR_TYPES:
-            SENSOR_TYPES[sensor_type] = ["", "mdi:flash"]
-
-        entities.append(TQEnergySensor(coordinator, sensor_type, sensor_prefix))
+    for sensor in SENSORS:
+        if sensor.key in config[CONF_RESOURCES]:
+            entities.append(TQEnergySensor(sensor, coordinator, sensor_prefix))
 
     async_add_entities(entities)
 
 
-class TQEnergySensor(Entity):
-    def __init__(self, coordinator, sensor_type, sensor_prefix):
+class TQEnergySensor(SensorEntity):
+    entity_description: TQEnergyManagementSensorEntityDescription
+
+    def __init__(self, description: TQEnergyManagementSensorEntityDescription, coordinator, sensor_prefix):
         """Initialize the sensor."""
         self.coordinator = coordinator
-        self.type = sensor_type
+        self.entity_description = description
+        self.key = description.key
         self._last_updated = None
         self._sensor_prefix = sensor_prefix
-        self._entity_type = self.type
-        if self.type in SENSOR_NAMES:
-            self._name = SENSOR_NAMES[self.type]
-        else:    
-           self._name = "{} {}".format(sensor_prefix, self.type)
-        self._unit = SENSOR_TYPES[self.type][0]
-        self._icon = SENSOR_TYPES[self.type][1]
-        self._state = self.state
+        self._attr_should_poll = False
 
-    @property
-    def should_poll(self):
-        """No need to poll. Coordinator notifies entity of updates."""
-        return False
+        if description.key in SENSOR_NAMES:
+            self._name = SENSOR_NAMES[description.key]
+        else:
+            self._name = "{} {}".format(sensor_prefix, self.key)
 
     @property
     def available(self):
@@ -239,42 +160,19 @@ class TQEnergySensor(Entity):
         self.coordinator.async_remove_listener(self.async_write_ha_state)
 
     @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
     def unique_id(self):
         """Return the unique ID of the binary sensor."""
-        return f"{self._sensor_prefix}_{self._entity_type}"
-
-    @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        return self._icon
+        return f"{self._sensor_prefix}_{self.key}"
 
     @property
     def state(self):
         """Return the state of the sensor."""
         try:
             if self.coordinator.data:
-                return self.coordinator.data[self.type]
+                return self.coordinator.data[self.key]
         except KeyError:
-            _LOGGER.error("can't find %s", self.type)
+            _LOGGER.error("can't find %s", self.key)
         return None
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return self._unit
-
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes of this device."""
-        attr = {}
-        if self._last_updated is not None:
-            attr["Last Updated"] = self._last_updated
-        return attr
 
     async def async_update(self):
         """Update Entity
